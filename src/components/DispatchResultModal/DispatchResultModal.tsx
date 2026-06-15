@@ -1,6 +1,6 @@
 import useGameStore from '@/store/useGameStore';
 import { CANDY_CONFIG } from '@/data/config';
-import { Coins, Star, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Coins, Star, CheckCircle, XCircle } from 'lucide-react';
 
 export default function DispatchResultModal() {
   const { gamePhase, dispatchResult, nextOrder, closeResult, currentOrder } = useGameStore();

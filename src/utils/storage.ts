@@ -9,7 +9,6 @@ import {
   Candy,
   Train,
   StationOrder,
-  Position,
   DispatchResult,
 } from '@/types';
 import { STATIONS, INITIAL_TRAIN, GAME_CONFIG } from '@/data/config';
@@ -87,6 +86,10 @@ const DEFAULT_PROFILE: PlayerProfile = {
   reputation: 0,
   level: 1,
   unlockedStations: ['candy-town'],
+  rescueBadges: 0,
+  emergencyCoins: 0,
+  stationFavors: {},
+  totalRescues: 0,
 };
 
 const DEFAULT_STATS: AllStats = {
@@ -117,7 +120,15 @@ export function loadProfile(): PlayerProfile {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return {
+        ...DEFAULT_PROFILE,
+        ...parsed,
+        rescueBadges: parsed.rescueBadges ?? DEFAULT_PROFILE.rescueBadges,
+        emergencyCoins: parsed.emergencyCoins ?? DEFAULT_PROFILE.emergencyCoins,
+        stationFavors: parsed.stationFavors ?? DEFAULT_PROFILE.stationFavors,
+        totalRescues: parsed.totalRescues ?? DEFAULT_PROFILE.totalRescues,
+      };
     }
   } catch (e) {
     console.error('Failed to load profile:', e);

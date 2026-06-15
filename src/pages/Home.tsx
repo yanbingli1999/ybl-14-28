@@ -5,13 +5,15 @@ import StationOrderPanel from '@/components/Station/StationOrderPanel';
 import StatsPanel from '@/components/StatsPanel/StatsPanel';
 import DispatchResultModal from '@/components/DispatchResultModal/DispatchResultModal';
 import GameOverModal from '@/components/GameOverModal/GameOverModal';
+import RescueModal from '@/components/Rescue/RescueModal';
+import RescueResultModal from '@/components/Rescue/RescueResultModal';
 import { getStationProgress } from '@/engine/contractSystem';
 import useGameStore from '@/store/useGameStore';
-import { Train, Candy } from 'lucide-react';
+import { Train, Candy, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
   const { profile } = useGameStore();
-  const { current, next, progress } = getStationProgress(profile.reputation);
+  const { next, progress } = getStationProgress(profile.reputation);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-pink-50 to-purple-50">
@@ -89,6 +91,21 @@ export default function Home() {
           </ul>
         </div>
 
+        <div className="mt-4 p-4 bg-orange-50/60 backdrop-blur rounded-xl border-2 border-orange-200">
+          <h3 className="font-bold text-orange-700 mb-2 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            🚂 铁路救援委托
+          </h3>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• 游戏中会随机出现 <span className="text-orange-600 font-medium">被困糖车</span> 或 <span className="text-orange-600 font-medium">缺货站台</span> 救援任务</li>
+            <li>• 点击地图上的 <span className="text-red-500 font-medium">红色警告标记</span> 或车厢可查看救援详情</li>
+            <li>• 可临时改派已装载的糖果去执行救援任务</li>
+            <li>• 救援会减少主订单货量，但能获得 <span className="text-yellow-600 font-medium">救援徽章</span>、<span className="text-orange-600 font-medium">紧急金币</span> 和 <span className="text-pink-600 font-medium">车站好感</span></li>
+            <li>• 救援徽章可减少罚金（最多50%），车站好感可增加订单奖励</li>
+            <li>• 救援任务有时间限制，超时会自动消失</li>
+          </ul>
+        </div>
+
         <footer className="mt-6 text-center text-xs text-gray-400">
           糖果列车 © 2024 | 数据存储在本地浏览器中
         </footer>
@@ -97,6 +114,8 @@ export default function Home() {
       <StatsPanel />
       <DispatchResultModal />
       <GameOverModal />
+      <RescueModal />
+      <RescueResultModal />
     </div>
   );
 }

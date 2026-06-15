@@ -70,6 +70,38 @@ export interface Station {
   description: string;
 }
 
+export type RescueMissionType = 'stranded_train' | 'out_of_stock_station';
+
+export interface RescueReward {
+  badge: number;
+  emergencyCoins: number;
+  stationFavor: number;
+  stationId: string;
+}
+
+export interface RescueMission {
+  id: string;
+  type: RescueMissionType;
+  title: string;
+  description: string;
+  stationName: string;
+  stationId: string;
+  requirements: OrderItem[];
+  reward: RescueReward;
+  timeLimit: number;
+  createdAt: number;
+  isActive: boolean;
+  mapPosition: { row: number; col: number };
+}
+
+export interface RescueResult {
+  success: boolean;
+  missionId: string;
+  reward: RescueReward;
+  itemsSent: OrderItem[];
+  itemsMissing: OrderItem[];
+}
+
 export interface PlayerProfile {
   id: string;
   name: string;
@@ -77,6 +109,10 @@ export interface PlayerProfile {
   reputation: number;
   level: number;
   unlockedStations: string[];
+  rescueBadges: number;
+  emergencyCoins: number;
+  stationFavors: Record<string, number>;
+  totalRescues: number;
 }
 
 export interface GameState {
@@ -92,6 +128,9 @@ export interface GameState {
   isAnimating: boolean;
   gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
+  activeRescueMission: RescueMission | null;
+  rescueResult: RescueResult | null;
+  rescueItems: OrderItem[];
 }
 
 export interface DispatchResult {

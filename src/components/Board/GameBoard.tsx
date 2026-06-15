@@ -1,6 +1,7 @@
 import useGameStore from '@/store/useGameStore';
 import CandyCell from './CandyCell';
 import { BOARD_SIZE } from '@/types';
+import RescueMissionPanel from '../Rescue/RescueMissionPanel';
 
 export default function GameBoard() {
   const { board, selectedCandy, selectCandy, isAnimating, gamePhase } = useGameStore();
@@ -34,6 +35,8 @@ export default function GameBoard() {
           ))
         )}
       </div>
+
+      <RescueMissionPanel />
 
       <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-amber-600 shadow-lg border-4 border-amber-200" />
       <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-amber-600 shadow-lg border-4 border-amber-200" />

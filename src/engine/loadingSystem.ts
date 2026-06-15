@@ -1,5 +1,4 @@
 import { Train, Carriage, CandyType } from '@/types';
-import { GAME_CONFIG } from '@/data/config';
 
 export function loadCandiesToTrain(train: Train, candyCounts: Record<CandyType, number>): {
   train: Train;

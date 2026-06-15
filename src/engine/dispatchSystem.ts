@@ -1,10 +1,13 @@
-import { Train, StationOrder, DispatchResult, OrderItem, CandyType } from '@/types';
+import { Train, StationOrder, DispatchResult, OrderItem } from '@/types';
 import { GAME_CONFIG } from '@/data/config';
 import { getCandyLoad } from './loadingSystem';
+import { getBadgeDiscount, getStationFavorBonus } from './rescueSystem';
 
 export function calculateDispatchResult(
   train: Train,
-  order: StationOrder
+  order: StationOrder,
+  badgeCount: number = 0,
+  stationFavors: Record<string, number> = {}
 ): DispatchResult {
   const correctItems: OrderItem[] = [];
   const mismatches: OrderItem[] = [];
@@ -43,12 +46,22 @@ export function calculateDispatchResult(
     if (order.isUrgent) {
       reward += Math.floor(order.reward * GAME_CONFIG.URGENT_BONUS_RATE);
     }
+
+    const favorBonus = getStationFavorBonus(order.stationId, stationFavors);
+    if (favorBonus > 0) {
+      reward += Math.floor(order.reward * favorBonus);
+    }
   }
 
   let penalty = 0;
   if (mismatches.length > 0) {
     penalty = Math.floor(order.reward * GAME_CONFIG.MISMATCH_PENALTY_RATE) * mismatches.length;
     penalty = Math.min(penalty, order.penalty);
+
+    const badgeDiscount = getBadgeDiscount(badgeCount);
+    if (badgeDiscount > 0) {
+      penalty = Math.floor(penalty * (1 - badgeDiscount));
+    }
   }
 
   const reputationChange = success

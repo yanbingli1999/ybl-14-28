@@ -8,6 +8,10 @@ import {
   DispatchResult,
   PlayerProfile,
   AllStats,
+  RescueMission,
+  RescueResult,
+  OrderItem,
+  CandyType,
 } from '@/types';
 import {
   createInitialBoard,
@@ -28,6 +32,17 @@ import {
 import { loadCandiesToTrain, clearTrain } from '@/engine/loadingSystem';
 import { calculateDispatchResult } from '@/engine/dispatchSystem';
 import { generateOrder } from '@/engine/contractSystem';
+import {
+  shouldSpawnRescue,
+  generateRescueMission,
+  calculateRescueResult,
+  applyRescueToTrain,
+  applyRescueReward,
+  allocateToRescue,
+  deallocateFromRescue,
+  getAvailableForRescue,
+  isMissionExpired,
+} from '@/engine/rescueSystem';
 import {
   loadProfile,
   saveProfile,
@@ -56,6 +71,11 @@ interface GameStore {
   profile: PlayerProfile;
   stats: AllStats;
   showStats: boolean;
+  activeRescueMission: RescueMission | null;
+  rescueResult: RescueResult | null;
+  rescueItems: OrderItem[];
+  showRescueModal: boolean;
+  rescueTick: number;
 
   selectCandy: (pos: Position) => void;
   processSwap: (pos1: Position, pos2: Position) => void;
@@ -67,6 +87,16 @@ interface GameStore {
   closeResult: () => void;
   changeStation: (stationId: string) => void;
   persist: () => void;
+  trySpawnRescue: () => void;
+  openRescueModal: () => void;
+  closeRescueModal: () => void;
+  allocateToRescue: (candyType: CandyType, amount: number) => void;
+  deallocateFromRescue: (candyType: CandyType, amount: number) => void;
+  executeRescue: () => void;
+  declineRescue: () => void;
+  closeRescueResult: () => void;
+  checkRescueExpiry: () => void;
+  forceRescueTick: () => void;
 }
 
 const useGameStore = create<GameStore>((set, get) => {
@@ -90,6 +120,11 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
+    activeRescueMission: null,
+    rescueResult: null,
+    rescueItems: [],
+    showRescueModal: false,
+    rescueTick: 0,
 
     persist: () => {
       const s = get();
@@ -105,6 +140,94 @@ const useGameStore = create<GameStore>((set, get) => {
         gamePhase: s.gamePhase,
         dispatchResult: s.dispatchResult,
       });
+    },
+
+    trySpawnRescue: () => {
+      const { moves, activeRescueMission, currentStationId, profile, gamePhase } = get();
+      if (gamePhase !== 'playing') return;
+
+      const movesUsed = GAME_CONFIG.INITIAL_MOVES - moves;
+      if (shouldSpawnRescue(movesUsed, activeRescueMission)) {
+        const mission = generateRescueMission(currentStationId, profile.reputation);
+        set({ activeRescueMission: mission, rescueItems: [] });
+      }
+    },
+
+    openRescueModal: () => {
+      set({ showRescueModal: true });
+    },
+
+    closeRescueModal: () => {
+      set({ showRescueModal: false });
+    },
+
+    allocateToRescue: (candyType: CandyType, amount: number) => {
+      const { train, rescueItems, activeRescueMission } = get();
+      if (!activeRescueMission) return;
+
+      const available = getAvailableForRescue(train, candyType, rescueItems);
+      const toAllocate = Math.min(amount, available);
+      if (toAllocate <= 0) return;
+
+      const newItems = allocateToRescue(rescueItems, candyType, toAllocate);
+      set({ rescueItems: newItems });
+    },
+
+    deallocateFromRescue: (candyType: CandyType, amount: number) => {
+      const { rescueItems, activeRescueMission } = get();
+      if (!activeRescueMission) return;
+
+      const newItems = deallocateFromRescue(rescueItems, candyType, amount);
+      set({ rescueItems: newItems });
+    },
+
+    executeRescue: () => {
+      const { train, activeRescueMission, rescueItems, profile } = get();
+      if (!activeRescueMission) return;
+
+      const result = calculateRescueResult(train, activeRescueMission, rescueItems);
+      const newTrain = applyRescueToTrain(train, rescueItems);
+      const newProfile = applyRescueReward(profile, result);
+
+      saveProfile(newProfile);
+
+      set({
+        train: newTrain,
+        profile: newProfile,
+        rescueResult: result,
+        activeRescueMission: null,
+        rescueItems: [],
+        showRescueModal: false,
+      });
+
+      get().persist();
+    },
+
+    declineRescue: () => {
+      set({
+        activeRescueMission: null,
+        rescueItems: [],
+        showRescueModal: false,
+      });
+    },
+
+    closeRescueResult: () => {
+      set({ rescueResult: null });
+    },
+
+    checkRescueExpiry: () => {
+      const { activeRescueMission } = get();
+      if (activeRescueMission && isMissionExpired(activeRescueMission)) {
+        set({
+          activeRescueMission: null,
+          rescueItems: [],
+          showRescueModal: false,
+        });
+      }
+    },
+
+    forceRescueTick: () => {
+      set(state => ({ rescueTick: state.rescueTick + 1 }));
     },
 
     selectCandy: (pos: Position) => {
@@ -253,6 +376,7 @@ const useGameStore = create<GameStore>((set, get) => {
         }));
 
         get().persist();
+        get().trySpawnRescue();
 
         if (get().moves <= 0) {
           set({ gamePhase: 'gameover' });
@@ -268,7 +392,12 @@ const useGameStore = create<GameStore>((set, get) => {
 
       if (gamePhase !== 'playing' || !currentOrder) return;
 
-      const result = calculateDispatchResult(train, currentOrder);
+      const result = calculateDispatchResult(
+        train,
+        currentOrder,
+        profile.rescueBadges,
+        profile.stationFavors
+      );
 
       let newCoins = profile.coins + result.reward - result.penalty;
       newCoins = Math.max(0, newCoins);
@@ -323,6 +452,10 @@ const useGameStore = create<GameStore>((set, get) => {
         moves: GAME_CONFIG.INITIAL_MOVES,
         combo: 0,
         maxCombo: 0,
+        activeRescueMission: null,
+        rescueResult: null,
+        rescueItems: [],
+        showRescueModal: false,
       }));
 
       get().persist();
@@ -348,6 +481,10 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: null,
         profile,
         stats: loadStats(),
+        activeRescueMission: null,
+        rescueResult: null,
+        rescueItems: [],
+        showRescueModal: false,
       });
 
       clearGameState();
@@ -378,6 +515,9 @@ const useGameStore = create<GameStore>((set, get) => {
         currentStationId: stationId,
         currentOrder: newOrder,
         train: clearTrain(state.train),
+        activeRescueMission: null,
+        rescueItems: [],
+        showRescueModal: false,
       }));
 
       get().persist();

@@ -120,9 +120,13 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
-    activeRescueMission: null,
+    activeRescueMission: (persisted?.activeRescueMission && !isMissionExpired(persisted.activeRescueMission))
+      ? persisted.activeRescueMission
+      : null,
     rescueResult: null,
-    rescueItems: [],
+    rescueItems: (persisted?.activeRescueMission && !isMissionExpired(persisted.activeRescueMission))
+      ? (persisted?.rescueItems ?? [])
+      : [],
     showRescueModal: false,
     rescueTick: 0,
 
@@ -139,6 +143,8 @@ const useGameStore = create<GameStore>((set, get) => {
         maxCombo: s.maxCombo,
         gamePhase: s.gamePhase,
         dispatchResult: s.dispatchResult,
+        activeRescueMission: s.activeRescueMission,
+        rescueItems: s.rescueItems,
       });
     },
 
@@ -150,6 +156,7 @@ const useGameStore = create<GameStore>((set, get) => {
       if (shouldSpawnRescue(movesUsed, activeRescueMission)) {
         const mission = generateRescueMission(currentStationId, profile.reputation);
         set({ activeRescueMission: mission, rescueItems: [] });
+        get().persist();
       }
     },
 
@@ -171,6 +178,7 @@ const useGameStore = create<GameStore>((set, get) => {
 
       const newItems = allocateToRescue(rescueItems, candyType, toAllocate);
       set({ rescueItems: newItems });
+      get().persist();
     },
 
     deallocateFromRescue: (candyType: CandyType, amount: number) => {
@@ -179,6 +187,7 @@ const useGameStore = create<GameStore>((set, get) => {
 
       const newItems = deallocateFromRescue(rescueItems, candyType, amount);
       set({ rescueItems: newItems });
+      get().persist();
     },
 
     executeRescue: () => {
@@ -209,6 +218,7 @@ const useGameStore = create<GameStore>((set, get) => {
         rescueItems: [],
         showRescueModal: false,
       });
+      get().persist();
     },
 
     closeRescueResult: () => {
@@ -223,6 +233,7 @@ const useGameStore = create<GameStore>((set, get) => {
           rescueItems: [],
           showRescueModal: false,
         });
+        get().persist();
       }
     },
 

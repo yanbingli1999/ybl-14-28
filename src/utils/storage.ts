@@ -10,6 +10,8 @@ import {
   Train,
   StationOrder,
   DispatchResult,
+  RescueMission,
+  OrderItem,
 } from '@/types';
 import { STATIONS, INITIAL_TRAIN, GAME_CONFIG } from '@/data/config';
 import { createInitialBoard } from '@/engine/matchEngine';
@@ -33,6 +35,8 @@ export interface PersistedGameState {
   maxCombo: number;
   gamePhase: 'playing' | 'dispatching' | 'result' | 'gameover';
   dispatchResult: DispatchResult | null;
+  activeRescueMission: RescueMission | null;
+  rescueItems: OrderItem[];
   timestamp: number;
 }
 
@@ -52,6 +56,12 @@ export function loadGameState(profile: PlayerProfile): PersistedGameState | null
       const parsed = JSON.parse(data) as PersistedGameState;
       const now = Date.now();
       if (now - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        if (!parsed.activeRescueMission) {
+          parsed.activeRescueMission = null;
+        }
+        if (!parsed.rescueItems) {
+          parsed.rescueItems = [];
+        }
         return parsed;
       }
     }
@@ -71,6 +81,8 @@ export function loadGameState(profile: PlayerProfile): PersistedGameState | null
     maxCombo: 0,
     gamePhase: 'playing',
     dispatchResult: null,
+    activeRescueMission: null,
+    rescueItems: [],
     timestamp: Date.now(),
   };
 }
